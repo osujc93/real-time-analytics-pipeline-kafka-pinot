@@ -45,59 +45,11 @@ The system consists of:
 
 http://localhost:8888/orders/overview
 
+```sh
+
 Endpoint for Kafka Streams topology that keeps rolling 1-second-advancing, 60-second windows of key business metrics.
 
 Everything is persisted in embedded RocksDB state stores so the data can be queried on demand without hitting Pinot/PostgreSQL.
-
-```sh
-
-@ApplicationScoped
-public class OrdersTopology {
-
-    @Produces
-    public Topology buildTopology() {
-
-        final Serde<Order>    orderSerde  = Serdes.serdeFrom(new JsonSerializer<>(), new JsonDeserializer<>(Order.class));
-        final Serde<String>   stringSerde = Serdes.String();
-        final Serde<Integer>  intSerde    = Serdes.Integer();
-
-        StreamsBuilder builder = new StreamsBuilder();
-        KStream<String, Order> orders =
-                builder.stream("FakeEcommOrders", Consumed.with(Serdes.String(), orderSerde));
-
-        TimeWindows timeWindow = TimeWindows
-                .ofSizeAndGrace(Duration.ofSeconds(60), Duration.ofMinutes(5))
-                .advanceBy(Duration.ofSeconds(1));
-
-        orders.groupBy((k, v) -> "count", Grouped.with(stringSerde, orderSerde))
-              .windowedBy(timeWindow)
-              .count(Materialized.as("OrdersCountStore"));
-
-        orders.groupBy((k, v) -> "count", Grouped.with(stringSerde, orderSerde))
-              .windowedBy(timeWindow)
-              .aggregate(() -> 0.0,
-                         (k, v, agg) -> agg + v.order_total,
-                         Materialized.<String, Double, WindowStore<Bytes, byte[]>>as("RevenueStore")
-                                     .withValueSerde(Serdes.Double()));
-
-        orders.filter((k, v) -> v != null && isFraud(v))
-              .groupBy((k, v) -> "fraud", Grouped.with(stringSerde, orderSerde))
-              .windowedBy(timeWindow)
-              .count(Materialized.as("FraudCountStore"));
-
-        orders.filter((k, v) -> v != null && "yes".equalsIgnoreCase(v.delivered))
-              .groupBy((k, v) -> "count", Grouped.with(stringSerde, orderSerde))
-              .windowedBy(timeWindow)
-              .count(Materialized.as("DeliveredCountStore"));
-
-        orders.filter((k, v) -> v != null && "yes".equalsIgnoreCase(v.refunded))
-              .groupBy((k, v) -> "count", Grouped.with(stringSerde, orderSerde))
-              .windowedBy(timeWindow)
-              .count(Materialized.as("RefundedCountStore"));
-
-        return builder.build();
-    }
-}
 
 ```
 
