@@ -1,0 +1,129 @@
+FROM apache/airflow:slim-2.10.4-python3.11
+
+USER root
+
+ENV TZ=America/New_York
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    apt-utils vim wget gnupg software-properties-common sudo \
+    iproute2 bc lsof openssl curl jq \
+    build-essential libsasl2-dev g++ gcc make libssl-dev \
+    python3-dev libffi-dev libpq-dev \
+    iputils-ping isc-dhcp-client net-tools procps kmod netcat-openbsd dnsutils \
+    psmisc openjdk-17-jre sqlite3 redis-tools \
+    python3-pip libldap2-dev default-libmysqlclient-dev \
+    tzdata ca-certificates maven bash zip unzip \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone \
+    rm -rf /var/lib/apt/lists/*
+
+
+ENV SDKMAN_DIR=/usr/local/sdkman
+ENV PATH="${SDKMAN_DIR}/bin:${SDKMAN_DIR}/candidates/java/current/bin:${SDKMAN_DIR}/candidates/quarkus/current/bin:${PATH}"
+
+RUN curl -s "https://get.sdkman.io" | bash && \
+    bash -lc "\
+      source ${SDKMAN_DIR}/bin/sdkman-init.sh && \
+      sdk install java 17.0.8-tem && \
+      sdk install quarkus && \
+      quarkus create app blewy --package-name blewy && \
+      cd blewy && \
+      quarkus extension add 'io.quarkus:quarkus-kafka-streams' && \
+      cd .. && \
+      sdk flush archives && \
+      sdk flush tmp \
+    "
+
+RUN usermod -aG sudo airflow && \
+    echo "airflow ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/airflow && \
+    chmod 0440 /etc/sudoers.d/airflow
+
+RUN apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install --upgrade pip
+
+RUN mkdir -p /opt/airflow/logs && chown -R airflow:root /opt/airflow/logs
+
+WORKDIR /opt/airflow
+
+USER airflow
+
+RUN pip install --no-cache-dir --upgrade \
+    Flask \
+    Flask-Login \
+    Flask-Session \
+    itsdangerous \
+    redis \
+    python-dateutil \
+    pytz
+
+RUN pip install --no-cache-dir \
+    --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.4/constraints-3.11.txt" \
+    apache-airflow==2.10.4 \
+    apache-airflow-providers-celery \
+    apache-airflow-providers-apache-spark \
+    apache-airflow-providers-docker \
+    kafka-python-ng \
+    six \
+    flower \
+    python-dotenv \
+    tenacity \
+    psycopg2 \
+    psycopg2-binary \
+    pydantic \
+    pandas \
+    python-dateutil \
+    pytz \
+    aiohttp \
+    aiokafka \
+    lz4 \
+    requests \
+    airflow-exporter \
+    thrift \
+    thrift-sasl \
+    pyopenssl \
+    pure-sasl \
+    memory-profiler \
+    requests \
+    importlib-metadata \
+    python-snappy \
+    streamlit \
+    plotly \
+    pinotdb \
+    ipywidgets
+
+ENV PYSPARK_PYTHON=/usr/bin/python3
+ENV PYSPARK_DRIVER_PYTHON=/usr/bin/python3
+
+COPY ./dags /opt/airflow/dags/
+
+COPY /kafkaProducers /opt/airflow/kafkaProducers
+
+COPY /quarkus/src /opt/airflow/blewy/src
+COPY /quarkus/pom.xml /opt/airflow/blewy/pom.xml
+
+COPY /streamlit/app.py /opt/airflow/app.py
+
+COPY /pinot/conf/orders/schema.json /opt/airflow/orders/schema.json
+COPY /pinot/conf/orders/table.json /opt/airflow/orders/table.json
+COPY /pinot/bin/pinot-admin.sh /opt/airflow/pinot-admin.sh
+
+COPY /airflow/airflow/airflow.cfg /opt/airflow/airflow.cfg
+COPY /airflow/airflow/webserver_config.py /opt/airflow/webserver_config.py
+
+COPY /airflow/flask/sessions.py /home/airflow/.local/lib/python3.11/site-packages/flask_session/sessions.py
+COPY /airflow/flask/ctx.py /home/airflow/.local/lib/python3.11/site-packages/flask/ctx.py
+COPY /airflow/flask/session.py /home/airflow/.local/lib/python3.11/site-packages/flask/sessions.py
+
+USER root
+
+RUN groupadd -g 1001 docker && usermod -aG docker airflow
+
+RUN chown -R airflow:root /opt/airflow/blewy
+
+COPY /airflow/airflow/dag_endpoint.py /home/airflow/.local/lib/python3.11/site-packages/airflow/api_connexion/endpoints/dag_endpoint.py
+
+WORKDIR /opt/airflow
+
+USER airflow

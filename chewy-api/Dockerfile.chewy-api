@@ -1,0 +1,32 @@
+FROM python:3.9-slim
+
+ENV PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    python3-dev \
+    net-tools \
+    vim \
+    curl \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY ./chewy-api/requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY ./chewy-api ./
+
+EXPOSE 5001
+
+CMD ["gunicorn", "main:app", \
+     "--bind=0.0.0.0:5001", \
+     "--workers=1", \
+     "--threads=2", \
+     "--timeout=600", \
+     "--graceful-timeout=120", \
+     "--log-level=info", \
+     "--access-logfile=-", \
+     "--error-logfile=-"]
