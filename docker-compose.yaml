@@ -1,0 +1,1061 @@
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: ./airflow/Dockerfile.airflow2
+  env_file:
+    - ./.env
+  environment:
+    &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+    AIRFLOW__CORE__FERNET_KEY: 'HPqWFGaV0SS7c8c9oyfTBeZuJNR7TYgQGcqZTe0RHk0='
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+    WEB_SERVER_WORKER_TIMEOUT: 600
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW__WEBSERVER__SECRET_KEY}  
+    DOCKER_API_VERSION: '1.41'
+    DOCKER_HOST: 'unix:///var/run/docker.sock'
+    TZ: 'America/New_York'
+    AIRFLOW__CORE__DEFAULT_TIMEZONE: 'America/New_York'
+    AIRFLOW__WEBSERVER__DEFAULT_UI_TIMEZONE: 'America/New_York'
+    QUARKUS_KAFKA_STREAMS_ORDERS_BOOTSTRAP_SERVERS: "kafka2:9092,kafka3:9093,kafka4:9094"
+    QUARKUS_KAFKA_STREAMS_CLICKSTREAMS_BOOTSTRAP_SERVERS: "kafka2:9092,kafka3:9093,kafka4:9094"
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - /var/run/docker.sock:/var/run/docker.sock
+    - airflow-logs:/opt/airflow/logs
+  depends_on:
+    &airflow-common-depends-on
+    redis:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+    zookeeper1:
+      condition: service_healthy
+      
+x-extra-hosts: &shared-hosts
+  - "redis:172.20.10.8"
+  - "postgres:172.20.10.9"
+  - "kafka1:172.20.10.1"
+  - "kafka2:172.20.10.2"
+  - "kafka3:172.20.10.3"
+  - "kafka4:172.20.10.4"
+  - "kafka-ui:172.20.10.5"
+  - "airflow-webserver:172.20.10.10"
+  - "airflow-scheduler:172.20.10.11"
+  - "airflow-worker:172.20.10.12"
+  - "airflow-triggerer:172.20.10.13"
+  - "airflow-init:172.20.10.14"
+  - "airflow-cli:172.20.10.15"
+  - "flower:172.20.10.16"
+  - "zookeeper1:172.20.10.71"
+  - "zookeeper2:172.20.10.72"
+  - "zookeeper3:172.20.10.73"
+  - "zookeeper4:172.20.10.74"
+  - "zookeeper5:172.20.10.75"
+  - "fake-ecommerce-api:172.20.10.66"
+  - "nginx:172.20.10.70"
+  - "pinot-controller:172.20.10.110"
+  - "pinot-broker:172.20.10.111"
+  - "pinot-server:172.20.10.112"
+  - "pinot-server2:172.20.10.114"
+  - "pinot-server3:172.20.10.115"
+  - "pinot-minion:172.20.10.113"
+
+services:
+  redis:
+    image: redis:7.2-bookworm
+    container_name: redis
+    expose:
+      - 6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+      start_period: 30s
+    restart: always
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.8
+    depends_on:
+      postgres:
+        condition: service_healthy  
+    volumes:
+      - redis-data:/data
+
+  postgres:
+    build:
+      context: .
+      dockerfile: ./postgres/Dockerfile.postgres 
+    container_name: postgres
+    hostname: postgres    
+    command: >
+      postgres
+      -c max_connections=400
+      -c shared_buffers=256MB
+      -c maintenance_work_mem=512MB
+      -c authentication_timeout=2min
+      -c autovacuum_max_workers=10
+      -c autovacuum_naptime=10s
+      -c autovacuum_vacuum_cost_delay=0
+      -c autovacuum_vacuum_cost_limit=2000
+    ports:
+      - "5432:5432"
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}     
+      POSTGRES_PORT: ${POSTGRES_PORT}     
+      POSTGRES_HOST: ${POSTGRES_HOST}  
+      POSTGRES_ROLE: ${POSTGRES_ROLE}  
+      POSTGRES_DB: ${POSTGRES_DB}      
+      DOCKER_API_VERSION: '1.41'              
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init-postgres.sh:/docker-entrypoint-initdb.d/init-postgres.sh
+      - ./.env:/docker-entrypoint-initdb.d/.env      
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.9
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 90s
+      timeout: 30s
+      retries: 5
+
+  airflow-base:
+    container_name: airflow-base
+    build:
+      context: .
+      dockerfile: ./airflow/Dockerfile.airflow-base
+    image: airflow-base:latest
+    entrypoint: [ "sleep", "infinity" ]
+    command: []
+    environment: *airflow-common-env
+    healthcheck:
+      test: [ "CMD-SHELL", "airflow info --output json > /dev/null" ]
+      interval: 45s
+      timeout: 30s
+      retries: 6
+      start_period: 40s
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: bash -c "airflow webserver"
+    container_name: airflow-webserver
+    user: "airflow"
+    group_add:
+      - "docker"
+    environment:
+      <<: *airflow-common-env
+      AIRFLOW__LOGGING__LOGGING_LEVEL: DEBUG
+      AIRFLOW__LOGGING__CELERY_LOGGING_LEVEL: DEBUG
+      AIRFLOW__LOGGING__FAB_LOGGING_LEVEL: DEBUG
+      FLASK_LIMITER_STORAGE_URL: redis://:@redis:6379/0
+      AIRFLOW__CORE__FERNET_KEY: HPqWFGaV0SS7c8c9oyfTBeZuJNR7TYgQGcqZTe0RHk0=
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
+      AIRFLOW__CORE__HOSTNAME_CALLABLE: 'socket.gethostname'
+      AIRFLOW__PROVIDERS__DOCKER__DOCKEROPERATORMOUNT_TMP_DIR: "False"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/airflow
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/airflow      
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD}
+      WEB_SERVER_WORKER_TIMEOUT: 300  
+      DBT_PROFILES_DIR: /dbt  
+      QUARKUS_KAFKA_STREAMS_ORDERS_BOOTSTRAP_SERVERS: "kafka2:9092,kafka3:9093,kafka4:9094"
+      QUARKUS_KAFKA_STREAMS_CLICKSTREAMS_BOOTSTRAP_SERVERS: "kafka2:9092,kafka3:9093,kafka4:9094"
+    ports:
+      - "8082:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 30s
+      retries: 10
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kafka1:
+        condition: service_started
+      zookeeper1:
+        condition: service_healthy  
+      airflow-base:
+        condition: service_healthy  
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.10
+    extra_hosts: *shared-hosts
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - /var/run/docker.sock:/var/run/docker.sock
+      - airflow-logs:/opt/airflow/logs
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: bash -c "airflow scheduler"
+    container_name: airflow-scheduler
+    user: "airflow"
+    group_add:
+      - "docker"
+    environment:
+      <<: *airflow-common-env
+      AIRFLOW__LOGGING__LOGGING_LEVEL: DEBUG
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kafka1:
+        condition: service_started
+      zookeeper1:
+        condition: service_healthy  
+      airflow-base:
+        condition: service_healthy  
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.11
+    extra_hosts: *shared-hosts
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - /var/run/docker.sock:/var/run/docker.sock
+      - airflow-logs:/opt/airflow/logs
+
+  airflow-worker:
+    <<: *airflow-common
+    command: bash -c "airflow celery worker"
+    container_name: airflow-worker
+    user: "airflow"
+    group_add:
+      - "docker"
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - 'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}" || celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    environment:
+      <<: *airflow-common-env
+      DUMB_INIT_SETSID: "0"
+      AIRFLOW__LOGGING__LOGGING_LEVEL: DEBUG
+      AIRFLOW__LOGGING__CELERY_LOGGING_LEVEL: DEBUG  
+      AIRFLOW__CORE__HOSTNAME_CALLABLE: 'socket.gethostname'
+      DBT_PROFILES_DIR: /dbt  
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kafka1:
+        condition: service_started
+      zookeeper1:
+        condition: service_healthy   
+      airflow-base:
+        condition: service_healthy  
+    ports:
+      - "8793:8793"
+      - "8888:8888"
+      - "8501:8501"
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.12
+    extra_hosts: *shared-hosts
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - /var/run/docker.sock:/var/run/docker.sock
+      - airflow-logs:/opt/airflow/logs
+
+  airflow-triggerer:
+    <<: *airflow-common
+    command: bash -c "airflow triggerer"
+    container_name: airflow-triggerer
+    user: "airflow"
+    group_add:
+      - "docker"
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy   
+      kafka1:
+        condition: service_started
+      zookeeper1:
+        condition: service_healthy  
+      airflow-base:
+        condition: service_healthy  
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.13
+    extra_hosts: *shared-hosts
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - /var/run/docker.sock:/var/run/docker.sock
+      - airflow-logs:/opt/airflow/logs
+
+  airflow-init:
+    <<: *airflow-common
+    container_name: airflow-init
+    entrypoint: /bin/bash
+    user: "airflow"
+    group_add:
+      - "docker"
+    command:
+      - -c
+      - |
+        mkdir -p /sources/logs /sources/dags /sources/plugins
+        airflow db migrate
+        airflow users create --username ${_AIRFLOW_WWW_USER_USERNAME} --password ${_AIRFLOW_WWW_USER_PASSWORD} --firstname Admin --lastname User --role Admin --email admin@example.com
+    environment:
+      <<: *airflow-common-env
+      AIRFLOW__LOGGING__LOGGING_LEVEL: DEBUG
+      AIRFLOW__LOGGING__CELERY_LOGGING_LEVEL: DEBUG
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD}
+      _PIP_ADDITIONAL_REQUIREMENTS: ''
+    depends_on:
+      <<: *airflow-common-depends-on
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kafka1:
+        condition: service_started
+      zookeeper1:
+        condition: service_healthy  
+      airflow-base:
+        condition: service_healthy  
+    volumes:
+      - .:/sources
+      - ./dags:/opt/airflow/dags
+      - /var/run/docker.sock:/var/run/docker.sock
+      - airflow-logs:/opt/airflow/logs
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.14
+    extra_hosts: *shared-hosts
+
+  airflow-cli:
+    <<: *airflow-common
+    container_name: airflow-cli
+    user: "airflow"
+    group_add:
+      - "docker"
+    profiles:
+      - debug
+    environment:
+      <<: *airflow-common-env
+      CONNECTION_CHECK_MAX_COUNT: "0"
+      AIRFLOW__LOGGING__LOGGING_LEVEL: DEBUG
+      AIRFLOW__LOGGING__CELERY_LOGGING_LEVEL: DEBUG
+    depends_on:
+      <<: *airflow-common-depends-on
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      airflow-base:
+        condition: service_healthy  
+    entrypoint: ["tail", "-f", "/dev/null"]
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.15
+    extra_hosts: *shared-hosts
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - /var/run/docker.sock:/var/run/docker.sock
+      - airflow-logs:/opt/airflow/logs
+
+  airflow-exporter:
+    <<: *airflow-common
+    container_name: airflow-exporter
+    command: bash -c "airflow-prometheus-exporter --port 8799"
+    user: "airflow"
+    group_add:
+      - "docker"
+    environment:
+      <<: *airflow-common-env
+    ports:
+      - "8799:8799"
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.25
+    depends_on:
+      - airflow-webserver
+      - airflow-scheduler
+      - airflow-worker
+
+  flower:
+    <<: *airflow-common
+    command: bash -c "airflow celery flower"
+    container_name: flower
+    user: "airflow"
+    group_add:
+      - "docker"
+    profiles:
+      - flower
+    ports:
+      - "5556:5555"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5555/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy      
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.16
+
+  kafka1:
+    build:
+      context: .
+      dockerfile: ./kafkaKRaft/Dockerfile.kafka1
+    container_name: kafka1
+    hostname: kafka1    
+    ports:
+      - "9091:9091"
+      - "7001:7001"
+      - "9001:9001"
+      - "9002:9002"
+      - "9003:9003"
+    volumes:
+      - kafka1_data:/var/lib/kafka/data1 
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.1
+    environment:
+      KAFKA_JVM_PERFORMANCE_OPTS: "-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -XX:MaxInlineLevel=15 -Djava.awt.headless=true"
+      LOG_DIR: "/var/log/kafka"
+      KAFKA_LOG4J_OPTS: "-Dlog4j.configuration=file:/opt/kafka/config/log4j.properties -Dkafka.logs.dir=/var/log/kafka"
+      KAFKA_GC_LOG_OPTS: "-Xlog:gc*:file=/var/log/kafka/gc.log:time,tags:filecount=10,filesize=100M"
+      JAVA_DEBUG_PORT: "5005"
+      JAVA_DEBUG_OPTS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"    
+      KAFKA_HEAP_OPTS: "-Xms2G -Xmx2G -XX:+UseG1GC"
+      KAFKA_CLUSTER_ID: 123e4567-e89b-12d3-a456-426614174001
+      KAFKA_OPTS: |
+        -Djava.security.properties=/usr/lib/jvm/java-17-openjdk/conf/security/java.security
+        -Djava.security.policy=/usr/lib/jvm/java-17-openjdk/conf/security/java.policy
+        -Dlog4j.configuration=file:/opt/kafka/config/log4j.properties
+        -Djava.net.debug=all     
+        -Dcom.sun.management.jmxremote.authenticate=false
+        -Dcom.sun.management.jmxremote.ssl=false
+    extra_hosts: *shared-hosts
+
+  kafka2:
+    build:
+      context: .
+      dockerfile: ./kafkaKRaft/Dockerfile.kafka2
+    container_name: kafka2
+    hostname: kafka2    
+    ports:
+      - "9092:9092"
+      - "7002:7002"
+      - "9004:9004"
+      - "9005:9005"
+      - "9006:9006"
+    volumes:
+      - kafka2_data:/var/lib/kafka/data2
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.2
+    environment:
+      KAFKA_JVM_PERFORMANCE_OPTS: "-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -XX:MaxInlineLevel=15 -Djava.awt.headless=true"
+      LOG_DIR: "/var/log/kafka"
+      KAFKA_LOG4J_OPTS: "-Dlog4j.configuration=file:/opt/kafka/config/log4j.properties -Dkafka.logs.dir=/var/log/kafka"
+      KAFKA_GC_LOG_OPTS: "-Xlog:gc*:file=/var/log/kafka/gc.log:time,tags:filecount=10,filesize=100M"
+      JAVA_DEBUG_PORT: "5005"
+      JAVA_DEBUG_OPTS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"    
+      KAFKA_HEAP_OPTS: "-Xms2G -Xmx2G -XX:+UseG1GC"
+      KAFKA_CLUSTER_ID: 123e4567-e89b-12d3-a456-426614174001
+      KAFKA_OPTS: |
+        -Djava.security.properties=/usr/lib/jvm/java-17-openjdk/conf/security/java.security
+        -Djava.security.policy=/usr/lib/jvm/java-17-openjdk/conf/security/java.policy
+        -Dlog4j.configuration=file:/opt/kafka/config/log4j.properties
+        -Djava.net.debug=all           
+        -Dcom.sun.management.jmxremote.authenticate=false
+        -Dcom.sun.management.jmxremote.ssl=false
+    extra_hosts: *shared-hosts
+
+  kafka3:
+    build:
+      context: .
+      dockerfile: ./kafkaKRaft/Dockerfile.kafka3
+    container_name: kafka3
+    hostname: kafka3    
+    ports:
+      - "9093:9093"
+      - "7003:7003"
+      - "9007:9007"
+      - "9008:9008"
+      - "9009:9009"
+    volumes:
+      - kafka3_data:/var/lib/kafka/data3
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.3
+    environment:
+      KAFKA_JVM_PERFORMANCE_OPTS: "-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -XX:MaxInlineLevel=15 -Djava.awt.headless=true"
+      LOG_DIR: "/var/log/kafka"
+      KAFKA_LOG4J_OPTS: "-Dlog4j.configuration=file:/opt/kafka/config/log4j.properties -Dkafka.logs.dir=/var/log/kafka"
+      KAFKA_GC_LOG_OPTS: "-Xlog:gc*:file=/var/log/kafka/gc.log:time,tags:filecount=10,filesize=100M"
+      JAVA_DEBUG_PORT: "5005"
+      JAVA_DEBUG_OPTS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"    
+      KAFKA_HEAP_OPTS: "-Xms2G -Xmx2G -XX:+UseG1GC"
+      KAFKA_CLUSTER_ID: 123e4567-e89b-12d3-a456-426614174001
+      KAFKA_OPTS: |
+        -Djava.security.properties=/usr/lib/jvm/java-17-openjdk/conf/security/java.security
+        -Djava.security.policy=/usr/lib/jvm/java-17-openjdk/conf/security/java.policy
+        -Dlog4j.configuration=file:/opt/kafka/config/log4j.properties
+        -Djava.net.debug=all           
+        -Dcom.sun.management.jmxremote.authenticate=false
+        -Dcom.sun.management.jmxremote.ssl=false
+    extra_hosts: *shared-hosts
+
+  kafka4:
+    build:
+      context: .
+      dockerfile: ./kafkaKRaft/Dockerfile.kafka4
+    container_name: kafka4
+    hostname: kafka4    
+    ports:
+      - "9094:9094"
+      - "7004:7004"
+      - "9010:9010"
+      - "9011:9011"
+      - "9012:9012"
+    volumes:
+      - kafka4_data:/var/lib/kafka/data4
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.4
+    environment:
+      KAFKA_JVM_PERFORMANCE_OPTS: "-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -XX:MaxInlineLevel=15 -Djava.awt.headless=true"
+      LOG_DIR: "/var/log/kafka"
+      KAFKA_LOG4J_OPTS: "-Dlog4j.configuration=file:/opt/kafka/config/log4j.properties -Dkafka.logs.dir=/var/log/kafka"
+      KAFKA_GC_LOG_OPTS: "-Xlog:gc*:file=/var/log/kafka/gc.log:time,tags:filecount=10,filesize=100M"
+      JAVA_DEBUG_PORT: "5005"
+      JAVA_DEBUG_OPTS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"    
+      KAFKA_HEAP_OPTS: "-Xms2G -Xmx2G -XX:+UseG1GC"
+      KAFKA_CLUSTER_ID: 123e4567-e89b-12d3-a456-426614174001
+      KAFKA_OPTS: |
+        -Djava.security.properties=/usr/lib/jvm/java-17-openjdk/conf/security/java.security
+        -Djava.security.policy=/usr/lib/jvm/java-17-openjdk/conf/security/java.policy
+        -Dlog4j.configuration=file:/opt/kafka/config/log4j.properties
+        -Djava.net.debug=all           
+        -Dcom.sun.management.jmxremote.authenticate=false
+        -Dcom.sun.management.jmxremote.ssl=false
+    extra_hosts: *shared-hosts
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    container_name: kafka-ui
+    ports:
+      - "8084:8080"
+    environment:
+      LOGGING_CONFIG: /etc/kafka-ui/logback.xml
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS: "kafka1:9091,kafka2:9092,kafka3:9093,kafka4:9094"
+      KAFKA_CLUSTERS_0_SECURITY_PROTOCOL: PLAINTEXT
+    volumes:
+      - kafka-ui_data:/var/lib/kafka-ui/data
+      - ./kafkaKRaft/properties/logging/logback.xml:/etc/kafka-ui/logback.xml
+      - ./kafkaKRaft/logs:/var/lib/kafka-ui/logs
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.5
+
+  zookeeper1:
+    build:
+      context: .
+      dockerfile: ./zookeeper/Dockerfile.zookeeper1
+    container_name: zookeeper1
+    hostname: zookeeper1
+    ports:
+      - "2222:22"
+      - "7011:7011"
+      - "2181:2181"
+      - "2888:2888"
+      - "3888:3888"
+    environment:
+      ZOO_MY_ID: 1
+      ZOO_SERVERS: server.1=zookeeper1:2888:3888;server.2=zookeeper2:2888:3888;server.3=zookeeper3:2888:3888;server.4=zookeeper4:2888:3888:observer;server.5=zookeeper5:2888:3888:observer
+      ZOO_DATA_DIR: /data
+    volumes:
+      - zk1_data:/data
+    healthcheck:
+      test: ["CMD", "/opt/healthcheck-tls.sh"]
+      interval: 60s
+      timeout: 60s
+      retries: 5
+      start_period: 230s
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.71
+    cap_add:
+      - SYS_TIME
+    extra_hosts: *shared-hosts
+
+  zookeeper2:
+    build:
+      context: .
+      dockerfile: ./zookeeper/Dockerfile.zookeeper2
+    container_name: zookeeper2
+    hostname: zookeeper2
+    ports:
+      - "2223:22"
+      - "7012:7012"
+      - "2182:2181"
+      - "2889:2888"
+      - "3889:3888"
+    environment:
+      ZOO_MY_ID: 2
+      ZOO_SERVERS: server.1=zookeeper1:2888:3888;server.2=zookeeper2:2888:3888;server.3=zookeeper3:2888:3888;server.4=zookeeper4:2888:3888:observer;server.5=zookeeper5:2888:3888:observer
+      ZOO_DATA_DIR: /data
+    volumes:
+      - zk2_data:/data 
+    healthcheck:
+      test: ["CMD", "/opt/healthcheck-tls.sh"]
+      interval: 60s
+      timeout: 60s
+      retries: 5
+      start_period: 230s
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.72
+    cap_add:
+      - SYS_TIME
+    extra_hosts: *shared-hosts
+
+  zookeeper3:
+    build:
+      context: .
+      dockerfile: ./zookeeper/Dockerfile.zookeeper3
+    container_name: zookeeper3
+    hostname: zookeeper3
+    ports:
+      - "2224:22"
+      - "7013:7013"
+      - "2183:2181"
+      - "2890:2888"
+      - "3890:3888"
+    environment:
+      ZOO_MY_ID: 3
+      ZOO_SERVERS: server.1=zookeeper1:2888:3888;server.2=zookeeper2:2888:3888;server.3=zookeeper3:2888:3888;server.4=zookeeper4:2888:3888:observer;server.5=zookeeper5:2888:3888:observer
+      ZOO_DATA_DIR: /data
+    volumes:
+      - zk3_data:/data 
+    healthcheck:
+      test: ["CMD", "/opt/healthcheck-tls.sh"]
+      interval: 60s
+      timeout: 60s
+      retries: 5
+      start_period: 230s
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.73
+    cap_add:
+      - SYS_TIME
+    extra_hosts: *shared-hosts
+
+  zookeeper4:
+    build:
+      context: .
+      dockerfile: ./zookeeper/Dockerfile.zookeeper4
+    container_name: zookeeper4
+    hostname: zookeeper4
+    ports:
+      - "2225:22"
+      - "7014:7014"
+      - "2184:2181"
+      - "2891:2888"
+      - "3891:3888"
+    environment:
+      ZOO_MY_ID: 4
+      ZOO_SERVERS: server.1=zookeeper1:2888:3888;server.2=zookeeper2:2888:3888;server.3=zookeeper3:2888:3888;server.4=zookeeper4:2888:3888:observer;server.5=zookeeper5:2888:3888:observer
+      ZOO_DATA_DIR: /data
+    volumes:
+      - zk4_data:/data 
+    healthcheck:
+      test: ["CMD", "/opt/healthcheck-tls.sh"]
+      interval: 60s
+      timeout: 60s
+      retries: 5
+      start_period: 230s
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.74
+    cap_add:
+      - SYS_TIME
+    extra_hosts: *shared-hosts
+
+  zookeeper5:
+    build:
+      context: .
+      dockerfile: ./zookeeper/Dockerfile.zookeeper5
+    container_name: zookeeper5
+    hostname: zookeeper5
+    ports:
+      - "2226:22"
+      - "7015:7015"
+      - "2185:2181"
+      - "2892:2888"
+      - "3892:3888"
+    environment:
+      ZOO_MY_ID: 5
+      ZOO_SERVERS: server.1=zookeeper1:2888:3888;server.2=zookeeper2:2888:3888;server.3=zookeeper3:2888:3888;server.4=zookeeper4:2888:3888:observer;server.5=zookeeper5:2888:3888:observer
+      ZOO_DATA_DIR: /data
+    volumes:
+      - zk5_data:/data 
+    healthcheck:
+      test: ["CMD", "/opt/healthcheck-tls.sh"]
+      interval: 60s
+      timeout: 60s
+      retries: 5
+      start_period: 230s
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.75
+    cap_add:
+      - SYS_TIME
+    extra_hosts: *shared-hosts
+
+  fake-ecommerce-api:
+    build:
+      context: .
+      dockerfile: ./chewy-api/Dockerfile.chewy-api
+    container_name: fake_ecommerce_api
+    hostname: fake-ecommerce-api
+    image: fake-ecommerce-api:latest
+    environment:
+      FAKE_RECORD_COUNT: 1111
+      NEW_BATCH_SIZE: 555
+      NEW_BATCH_INTERVAL_SECONDS: 25
+      PYTHONUNBUFFERED: 1
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: blewy
+      POSTGRES_USER: blewy
+      POSTGRES_PASSWORD: Password123456789
+      SQLALCHEMY_DATABASE_URI: postgresql+psycopg2://blewy:Password123456789@postgres:5432/blewy
+      SQLALCHEMY_POOL_SIZE: 10
+      SQLALCHEMY_POOL_TIMEOUT: 30
+    ports:
+      - "5001:5001"
+    depends_on:
+      postgres:
+        condition: service_healthy  
+      redis:
+        condition: service_healthy
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.66
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 90s
+      timeout: 40s
+      retries: 5
+    extra_hosts: *shared-hosts
+
+  fake-ecommerce-celery-worker:
+    build:
+      context: .
+      dockerfile: ./chewy-api/Dockerfile.chewy-api
+    container_name: fake_ecommerce_celery_worker
+    image: fake-ecommerce-celery-worker:latest
+    command: celery -A celery_worker worker --loglevel=DEBUG --concurrency=10
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: blewy
+      POSTGRES_USER: blewy
+      POSTGRES_PASSWORD: Password123456789
+      SQLALCHEMY_DATABASE_URI: postgresql+psycopg2://blewy:Password123456789@postgres:5432/blewy
+    depends_on:
+      postgres:
+        condition: service_healthy  
+      redis:
+        condition: service_healthy
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.67
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: fake_ecommerce_nginx
+    hostname: nginx
+    depends_on:
+      fake-ecommerce-api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.70
+    extra_hosts: *shared-hosts
+
+  pinot-controller:
+    build:
+      context: .
+      dockerfile: ./pinot/Dockerfile.pinot-controller
+    container_name: pinot-controller
+    hostname: pinot-controller
+    image: pinot-controller:latest
+    ports:
+      - "9000:9000"
+    environment:
+      JAVA_OPTS: "-Xms512m -Xmx512m"
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.110
+    depends_on:
+      zookeeper1:
+        condition: service_healthy
+      zookeeper2:
+        condition: service_healthy
+      zookeeper3:
+        condition: service_healthy
+      zookeeper4:
+        condition: service_healthy  
+      zookeeper5:
+        condition: service_healthy 
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:9000/health"]
+      interval: 45s
+      timeout: 30s
+      retries: 6
+      start_period: 45s
+    extra_hosts: *shared-hosts
+
+  pinot-broker:
+    build:
+      context: .
+      dockerfile: ./pinot/Dockerfile.pinot
+    container_name: pinot-broker
+    hostname: pinot-broker
+    image: pinot-broker:latest
+    restart: always
+    ports:
+      - "8099:8099"
+    command: >
+      StartBroker
+        -configFileName /opt/pinot/conf/pinot-broker.conf
+        -clusterName pinot-cluster
+        -zkAddress zookeeper1:2181,zookeeper2:2181,zookeeper3:2181,zookeeper4:2181,zookeeper5:2181
+        -brokerHost pinot-broker
+        -brokerPort 8099
+    environment:
+      JAVA_OPTS: "-Xms1g -Xmx1g"
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.111
+    depends_on:
+      zookeeper1:
+        condition: service_healthy
+      zookeeper2:
+        condition: service_healthy
+      zookeeper3:
+        condition: service_healthy
+      zookeeper4:
+        condition: service_healthy  
+      zookeeper5:
+        condition: service_healthy 
+      pinot-controller:
+        condition: service_healthy
+    extra_hosts: *shared-hosts
+
+  pinot-server:
+    build:
+      context: .
+      dockerfile: ./pinot/Dockerfile.pinot
+    container_name: pinot-server
+    hostname: pinot-server
+    image: pinot-server:latest
+    ports:
+      - "8097:8097"
+      - "8096:8096"
+    command: >
+      StartServer
+        -configFileName /opt/pinot/conf/pinot-server.conf
+        -clusterName pinot-cluster
+        -zkAddress zookeeper1:2181,zookeeper2:2181,zookeeper3:2181,zookeeper4:2181,zookeeper5:2181
+        -serverHost pinot-server
+        -serverPort 8097
+        -serverAdminPort 8096
+    environment:
+      JAVA_OPTS: "-Xms2g -Xmx2g"
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.112
+    depends_on:
+      zookeeper1:
+        condition: service_healthy
+      zookeeper2:
+        condition: service_healthy
+      zookeeper3:
+        condition: service_healthy
+      zookeeper4:
+        condition: service_healthy  
+      zookeeper5:
+        condition: service_healthy 
+      pinot-controller:
+        condition: service_healthy
+    extra_hosts: *shared-hosts
+
+
+  pinot-server2:
+    image: pinot-server:latest
+    build:
+      context: .
+      dockerfile: ./pinot/Dockerfile.pinot
+    container_name: pinot-server2
+    hostname: pinot-server2
+    command: >
+      StartServer
+        -configFileName /opt/pinot/conf/pinot-server.conf
+        -clusterName pinot-cluster
+        -zkAddress zookeeper1:2181,zookeeper2:2181,zookeeper3:2181,zookeeper4:2181,zookeeper5:2181
+        -serverHost pinot-server2
+        -serverPort 8097
+        -serverAdminPort 8096
+    environment:
+      JAVA_OPTS: "-Xms2g -Xmx2g"
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.114
+    depends_on:
+      pinot-controller: 
+        condition: service_healthy
+    extra_hosts: *shared-hosts
+
+  pinot-server3:
+    image: pinot-server:latest
+    build:
+      context: .
+      dockerfile: ./pinot/Dockerfile.pinot
+    container_name: pinot-server3
+    hostname: pinot-server3
+    command: >
+      StartServer
+        -configFileName /opt/pinot/conf/pinot-server.conf
+        -clusterName pinot-cluster
+        -zkAddress zookeeper1:2181,zookeeper2:2181,zookeeper3:2181,zookeeper4:2181,zookeeper5:2181
+        -serverHost pinot-server3
+        -serverPort 8097
+        -serverAdminPort 8096
+    environment:
+      JAVA_OPTS: "-Xms2g -Xmx2g"
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.115
+    depends_on:
+      pinot-controller: 
+        condition: service_healthy
+    extra_hosts: *shared-hosts
+
+  pinot-minion:
+    build:
+      context: .
+      dockerfile: ./pinot/Dockerfile.pinot
+    container_name: pinot-minion
+    hostname: pinot-minion
+    image: pinot-minion:latest
+    ports:
+      - "8098:8098"
+    command: >
+      StartMinion
+        -configFileName /opt/pinot/conf/pinot-minion.conf
+        -clusterName pinot-cluster
+        -zkAddress zookeeper1:2181,zookeeper2:2181,zookeeper3:2181,zookeeper4:2181,zookeeper5:2181
+        -minionHost pinot-minion
+        -minionPort 8098
+    environment:
+      JAVA_OPTS: "-Xms512m -Xmx512m"
+    networks:
+      nelo-data-pipeline:
+        ipv4_address: 172.20.10.113
+    depends_on:
+      zookeeper1:
+        condition: service_healthy
+      zookeeper2:
+        condition: service_healthy
+      zookeeper3:
+        condition: service_healthy
+      zookeeper4:
+        condition: service_healthy  
+      zookeeper5:
+        condition: service_healthy 
+      pinot-controller:
+        condition: service_healthy
+    extra_hosts: *shared-hosts
+
+networks:
+  nelo-data-pipeline:
+    driver: bridge
+    name: nelo-data-pipeline
+    attachable: true
+    ipam:
+      config:
+        - subnet: "172.20.10.0/24"
+          gateway: "172.20.10.254"
+
+volumes:
+  zk1_data:
+  zk2_data:
+  zk3_data:
+  zk4_data:
+  zk5_data:
+  kafka1_data:
+  kafka2_data:
+  kafka3_data:
+  kafka4_data:
+  kafka-ui_data:
+  postgres-data:
+  redis-data:
+  airflow-logs:
