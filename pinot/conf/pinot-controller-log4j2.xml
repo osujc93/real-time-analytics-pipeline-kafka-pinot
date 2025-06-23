@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Licensed to the Apache Software Foundation (ASF)  
+-->
+<Configuration>
+  <Appenders>
+    <Console name="console" target="SYSTEM_OUT">
+      <PatternLayout>
+        <pattern>%d{yyyy/MM/dd HH:mm:ss.SSS} %p [%c{1}] [%t] %m%n</pattern>
+      </PatternLayout>
+    </Console>
+    <RandomAccessFile name="controllerLog" fileName="pinotController.log" immediateFlush="false">
+      <PatternLayout>
+        <Pattern>%d{yyyy/MM/dd HH:mm:ss.SSS} %p [%c{1}] [%t] %m%n</Pattern>
+      </PatternLayout>
+    </RandomAccessFile>
+    <RandomAccessFile name="controllerHelixLog" fileName="pinotControllerHelix.log" immediateFlush="false">
+      <PatternLayout>
+        <Pattern>%d{yyyy/MM/dd HH:mm:ss.SSS} %p [%c{1}] [%t] %m%n</Pattern>
+      </PatternLayout>
+    </RandomAccessFile>
+  </Appenders>
+
+  <Loggers>
+    <Root level="debug" additivity="false">
+      <AppenderRef ref="console" level="warn"/>
+      <AppenderRef ref="controllerLog"/>
+    </Root>
+
+    <Logger name="org.apache.helix" level="debug" additivity="false">
+      <AppenderRef ref="controllerHelixLog"/>
+    </Logger>
+    <Logger name="org.apache.pinot.controller.ControllerStarter" level="debug" additivity="false">
+      <AppenderRef ref="console"/>
+    </Logger>
+
+    <Logger name="org.apache.pinot.tools.admin.command.AddTableCommand" level="debug" additivity="false">
+      <AppenderRef ref="console"/>
+    </Logger>
+
+    <AsyncLogger name="org.reflections" level="error" additivity="false"/>
+  </Loggers>
+</Configuration>

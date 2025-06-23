@@ -1,0 +1,30 @@
+FROM apachepinot/pinot:1.3.0
+
+USER root
+
+RUN yum update -y --allowerasing && \
+    yum install -y --allowerasing \
+      sudo \
+      vim \
+      net-tools \
+      jq \
+      curl && \
+    yum clean all
+
+COPY /pinot/conf/pinot-broker.conf /opt/pinot/conf/pinot-broker.conf
+COPY /pinot/conf/pinot-controller.conf /opt/pinot/conf/pinot-controller.conf
+COPY /pinot/conf/pinot-server.conf /opt/pinot/conf/pinot-server.conf
+COPY /pinot/conf/pinot-minion.conf /opt/pinot/conf/pinot-minion.conf
+COPY /pinot/conf/log4j2.xml /opt/pinot/conf/log4j2.xml
+COPY /pinot/conf/pinot-server-log4j2.xml /opt/pinot/conf/pinot-server-log4j2.xml
+COPY /pinot/conf/pinot-controller-log4j2.xml /opt/pinot/conf/pinot-controller-log4j2.xml
+
+COPY /pinot/conf/orders/schema.json /opt/pinot/conf/orders/schema.json
+COPY /pinot/conf/orders/table2.json /opt/pinot/conf/orders/table.json
+COPY /pinot/conf/clickstreams/schema.json /opt/pinot/conf/clickstreams/schema.json
+COPY /pinot/conf/clickstreams/table.json /opt/pinot/conf/clickstreams/table.json
+
+COPY /pinot/bin/pinot-admin.sh /opt/pinot/bin/pinot-admin.sh
+RUN chmod +x /opt/pinot/bin/pinot-admin.sh
+
+CMD ["StartController","-configFileName","/opt/pinot/conf/pinot-controller.conf","-clusterName","pinot-cluster","-zkAddress","zookeeper1:2181,zookeeper2:2181,zookeeper3:2181,zookeeper4:2181,zookeeper5:2181","-controllerHost","pinot-controller","-controllerPort","9000"]

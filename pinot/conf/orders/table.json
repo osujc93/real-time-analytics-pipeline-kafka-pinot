@@ -1,0 +1,87 @@
+{
+  "tableName": "orders",
+  "tableType": "REALTIME",
+  "segmentsConfig": {
+    "timeColumnName": "timestamp",
+    "timeType": "MILLISECONDS",
+    "retentionTimeUnit": "DAYS",
+    "retentionTimeValue": "1",
+    "schemaName": "orders",
+    "replicasPerPartition": "1",
+    "completionConfig": {
+      "completionMode": "DOWNLOAD"
+    },
+    "replicaGroupPartitionConfig": {
+      "replicaGroupBased": true,
+      "partitionColumn": "order_id",
+      "numInstancesPerPartition": 1
+    }
+  },
+  "tenants": {
+    "broker": "DefaultTenant",
+    "server": "DefaultTenant"
+  },
+  "tableIndexConfig": {
+    "loadMode": "MMAP",
+    "invertedIndexColumns": [
+      "order_id",
+      "delivered",
+      "refunded",
+      "payment_method",
+      "payment_status",
+      "shipping_status",
+      "currency"
+    ],
+    "sortedColumn": ["timestamp"],
+    "noDictionaryColumns": [
+      "order_total",
+      "risk_score",
+      "exchange_rate",
+      "env_fee",
+      "shipping_cost",
+      "partial_refund_amount",
+      "subtotal_after_coupon",
+      "subtotal_before_promos",
+      "tax_amount",
+      "tax_rate",
+      "loyalty_points_used",
+      "productsOrdered",
+      "totalQuantity"
+    ],
+
+    "nullHandlingEnabled": true
+  },
+  "ingestionConfig": {
+    "streamIngestionConfig": {
+      "streamConfigMaps": [
+        {
+          "realtime.segment.flush.threshold.rows": "0",
+          "realtime.segment.flush.threshold.time": "24h",
+          "realtime.segment.flush.threshold.segment.size": "150M",
+          "stream.kafka.broker.list": "kafka2:9092,kafka3:9093,kafka4:9094",
+          "stream.kafka.consumer.factory.class.name": "org.apache.pinot.plugin.stream.kafka20.KafkaConsumerFactory",
+          "stream.kafka.consumer.prop.auto.offset.reset": "smallest",
+          "stream.kafka.consumer.type": "lowLevel",
+          "stream.kafka.decoder.class.name": "org.apache.pinot.plugin.stream.kafka.KafkaJSONMessageDecoder",
+          "stream.kafka.hlc.zk.connect.string": "zookeeper1:2181,zookeeper2:2181,zookeeper3:2181",
+          "stream.kafka.topic.name": "FakeEcommOrders",
+          "stream.kafka.zk.broker.url": "zookeeper1:2181,zookeeper2:2181,zookeeper3:2181",
+          "streamType": "kafka"
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "customConfigs": {}
+  },
+  "routing": {
+    "instanceSelectorType": "strictReplicaGroup"
+  },
+  "dedupConfig": {
+    "dedupEnabled": true,
+    "hashFunction": "NONE",
+    "dedupTimeColumn": "timestamp",
+    "metadataTTL": 30000,
+    "enablePreload": true
+  }
+}

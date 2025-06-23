@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information.
+    The ASF licenses this file to you under the Apache License, Version 2.0
+    (the "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+-->
+<Configuration>
+  <Appenders>
+    <Console name="console" target="SYSTEM_OUT">
+      <PatternLayout>
+        <pattern>%d{yyyy/MM/dd HH:mm:ss.SSS} %p [%c{1}] [%t] %m%n</pattern>
+      </PatternLayout>
+    </Console>
+    <RandomAccessFile name="serverLog" fileName="pinotServer.log" immediateFlush="false">
+      <PatternLayout>
+        <Pattern>%d{yyyy/MM/dd HH:mm:ss.SSS} %p [%c{1}] [%t] %m%n</Pattern>
+      </PatternLayout>
+    </RandomAccessFile>
+    <RandomAccessFile name="serverHelixLog" fileName="pinotServerHelix.log" immediateFlush="false">
+      <PatternLayout>
+        <Pattern>%d{yyyy/MM/dd HH:mm:ss.SSS} %p [%c{1}] [%t] %m%n</Pattern>
+      </PatternLayout>
+    </RandomAccessFile>
+  </Appenders>
+
+  <Loggers>
+    <!-- Root logger -->
+    <Root level="debug" additivity="false">
+      <!-- Display warnings or higher on the console -->
+      <AppenderRef ref="console" level="warn"/>
+      <!-- Direct all logs >=INFO to the main server log file -->
+      <AppenderRef ref="serverLog"/>
+    </Root>
+
+    <!-- Helix logs to a dedicated file -->
+    <Logger name="org.apache.helix" level="debug" additivity="false">
+      <AppenderRef ref="serverHelixLog"/>
+    </Logger>
+
+    <!-- This logs Pinot server startup details to the console -->
+    <Logger name="org.apache.pinot.server.starter.helix.HelixServerStarter" level="debug" additivity="false">
+      <AppenderRef ref="console"/>
+    </Logger>
+
+    <!-- ADDED: Groovy transform logs at DEBUG -->
+    <Logger name="org.apache.pinot.core.data.function.GroovyFunctionEvaluator" level="debug" additivity="false">
+      <AppenderRef ref="serverLog"/>
+      <AppenderRef ref="console"/>
+    </Logger>
+
+    <!-- ADDED: JSON input plugin logs at DEBUG (helpful if your JSON parsing is failing) -->
+    <Logger name="org.apache.pinot.plugin.inputformat.json" level="debug" additivity="false">
+      <AppenderRef ref="serverLog"/>
+    </Logger>
+
+    <!-- This lowers spam from library reflection calls -->
+    <AsyncLogger name="org.reflections" level="error" additivity="false"/>
+  </Loggers>
+</Configuration>

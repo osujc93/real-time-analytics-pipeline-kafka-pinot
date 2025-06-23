@@ -1,0 +1,155 @@
+{
+  "schemaName": "orders",
+  "enableColumnBasedNullHandling": true,
+  "dimensionFieldSpecs": [
+    { "name": "order_id", "dataType": "STRING", "notNull": true },
+    { "name": "currency", "dataType": "STRING" },
+    { "name": "payment_method", "dataType": "STRING" },
+    { "name": "delivered", "dataType": "STRING" },
+    { "name": "delivery_date", "dataType": "STRING" },
+    { "name": "refunded", "dataType": "STRING" },
+    { "name": "shipping_provider", "dataType": "STRING" },
+    { "name": "shipping_speed", "dataType": "STRING" },
+    { "name": "shipping_status", "dataType": "STRING" },
+    { "name": "loyalty_tier", "dataType": "STRING" },
+    { "name": "payment_status", "dataType": "STRING" },
+    { "name": "expected_delivery_date", "dataType": "STRING" },
+    { "name": "fulfillment_center", "dataType": "STRING" },
+    {
+      "name": "coupon_codes",
+      "dataType": "STRING",
+      "singleValueField": false
+    },
+    { "name": "status_history", "dataType": "JSON" },
+    {
+      "name": "status",
+      "dataType": "STRING",
+      "singleValueField": false
+    },
+    {
+      "name": "status_id",
+      "dataType": "STRING",
+      "singleValueField": false
+    },
+    {
+      "name": "status_timestamp",
+      "dataType": "STRING",
+      "singleValueField": false
+    },
+    { "name": "billing_address", "dataType": "JSON" },
+    { "name": "shipping_address", "dataType": "JSON" },
+    { "name": "customer", "dataType": "JSON" },
+    { "name": "line_items", "dataType": "JSON" },
+    { "name": "shipments", "dataType": "JSON" },
+    { "name": "pet_name", "dataType": "STRING" },
+    { "name": "subscription_id", "dataType": "STRING" },
+    { "name": "subscription_frequency", "dataType": "STRING" },
+    { "name": "payment_info", "dataType": "STRING" },
+    { "name": "fraud_flag", "dataType": "STRING" },
+    { "name": "tracking_number", "dataType": "STRING" },
+    { "name": "billing_address_street", "dataType": "STRING" },
+    { "name": "billing_address_city", "dataType": "STRING" },
+    { "name": "billing_address_state", "dataType": "STRING" },
+    { "name": "billing_address_zipcode", "dataType": "STRING" },
+    { "name": "shipping_address_street", "dataType": "STRING" },
+    { "name": "shipping_address_city", "dataType": "STRING" },
+    { "name": "shipping_address_state", "dataType": "STRING" },
+    { "name": "shipping_address_zipcode", "dataType": "STRING" },
+    { "name": "customer_id", "dataType": "STRING" },
+    { "name": "customer_name", "dataType": "STRING" },
+    { "name": "customer_email", "dataType": "STRING" },
+    { "name": "customer_phone", "dataType": "STRING" },
+    { "name": "customer_address", "dataType": "STRING" },
+    { "name": "customer_city", "dataType": "STRING" },
+    { "name": "customer_state", "dataType": "STRING" },
+    { "name": "customer_zipcode", "dataType": "STRING" },
+    { "name": "timestamp", "dataType": "STRING" },
+    {
+      "name": "itemNames",
+      "dataType": "STRING",
+      "singleValueField": false
+    },
+    {
+      "name": "itemCategories",
+      "dataType": "STRING",
+      "singleValueField": false
+    },
+    {
+      "name": "itemQtys",
+      "dataType": "INT",
+      "singleValueField": false
+    },
+
+    {
+      "name": "line_items.free_qty",
+      "dataType": "INT",
+      "fieldType": "DIMENSION",
+      "singleValueField": false
+    },
+    {
+      "name": "line_items.product.category",
+      "dataType": "STRING",
+      "fieldType": "DIMENSION",
+      "singleValueField": false
+    },
+    {
+      "name": "line_items.product.name",
+      "dataType": "STRING",
+      "fieldType": "DIMENSION",
+      "singleValueField": false
+    },
+    {
+      "name": "line_items.product.product_id",
+      "dataType": "STRING",
+      "fieldType": "DIMENSION",
+      "singleValueField": false
+    },
+    {
+      "name": "line_items.quantity",
+      "dataType": "INT",
+      "fieldType": "DIMENSION",
+      "singleValueField": false
+    },
+
+
+    {
+      "name": "line_items.product.price",
+      "dataType": "DOUBLE",
+      "fieldType": "DIMENSION",
+      "singleValueField": false
+    },
+    {
+      "name": "line_items.product.stock",
+      "dataType": "INT",
+      "fieldType": "DIMENSION",
+      "singleValueField": false
+    }
+
+  ],
+  "metricFieldSpecs": [
+    { "name": "order_total", "dataType": "DOUBLE" },
+    { "name": "risk_score", "dataType": "INT" },
+    { "name": "exchange_rate", "dataType": "DOUBLE" },
+    { "name": "env_fee", "dataType": "DOUBLE" },
+    { "name": "shipping_cost", "dataType": "DOUBLE" },
+    { "name": "partial_refund_amount", "dataType": "DOUBLE" },
+    { "name": "subtotal_after_coupon", "dataType": "DOUBLE" },
+    { "name": "subtotal_before_promos", "dataType": "DOUBLE" },
+    { "name": "tax_amount", "dataType": "DOUBLE" },
+    { "name": "tax_rate", "dataType": "DOUBLE" },
+    { "name": "loyalty_points_used", "dataType": "INT" },
+    { "name": "productsOrdered", "dataType": "INT" },
+    { "name": "totalQuantity", "dataType": "INT" }
+  ],
+  "dateTimeFieldSpecs": [
+    {
+      "name": "time_ms",
+      "dataType": "LONG",
+      "format": "1:MILLISECONDS:EPOCH",
+      "granularity": "1:MILLISECONDS"
+    }
+  ],
+  "primaryKeyColumns": [
+    "order_id"
+  ]
+}

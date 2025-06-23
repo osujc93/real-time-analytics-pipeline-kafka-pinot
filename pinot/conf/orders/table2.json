@@ -1,0 +1,138 @@
+{
+  "tableName": "orders",
+  "tableType": "REALTIME",
+  "segmentsConfig": {
+    "timeColumnName": "time_ms",
+    "timeType": "MILLISECONDS",
+    "retentionTimeUnit": "DAYS",
+    "retentionTimeValue": "1",
+    "schemaName": "orders",
+    "replicasPerPartition": "3"
+  },
+  "tenants": {
+    "broker": "DefaultTenant",
+    "server": "DefaultTenant"
+  },
+  "tableIndexConfig": {
+    "loadMode": "MMAP",
+    "streamConfigs": {
+      "streamType": "kafka",
+      "stream.kafka.consumer.type": "lowLevel",
+      "stream.kafka.topic.name": "FakeEcommOrders",
+      "stream.kafka.decoder.class.name": "org.apache.pinot.plugin.stream.kafka.KafkaJSONMessageDecoder",
+      "stream.kafka.consumer.factory.class.name": "org.apache.pinot.plugin.stream.kafka20.KafkaConsumerFactory",
+      "stream.kafka.broker.list": "kafka2:9092,kafka3:9093,kafka4:9094",
+      "stream.kafka.consumer.prop.auto.offset.reset": "smallest"
+    }
+  },
+  "ingestionConfig": {
+    "complexTypeConfig": {
+      "delimiter": ".",
+      "fieldsToUnnest": ["line_items"]
+    },
+    "transformConfigs": [
+      {
+        "columnName": "totalQuantity",
+        "transformFunction": "jsonPathLong(line_items, '$.sum($.[*].quantity)')"
+      },
+      {
+        "columnName": "productsOrdered",
+        "transformFunction": "jsonPathArray(line_items, '$.length()')"
+      },
+      {
+        "columnName": "billing_address_street",
+        "transformFunction": "jsonPathString(billing_address, '$.street')"
+      },
+      {
+        "columnName": "billing_address_city",
+        "transformFunction": "jsonPathString(billing_address, '$.city')"
+      },
+      {
+        "columnName": "billing_address_state",
+        "transformFunction": "jsonPathString(billing_address, '$.state')"
+      },
+      {
+        "columnName": "billing_address_zipcode",
+        "transformFunction": "jsonPathString(billing_address, '$.zipcode')"
+      },
+      {
+        "columnName": "shipping_address_street",
+        "transformFunction": "jsonPathString(shipping_address, '$.street')"
+      },
+      {
+        "columnName": "shipping_address_city",
+        "transformFunction": "jsonPathString(shipping_address, '$.city')"
+      },
+      {
+        "columnName": "shipping_address_state",
+        "transformFunction": "jsonPathString(shipping_address, '$.state')"
+      },
+      {
+        "columnName": "shipping_address_zipcode",
+        "transformFunction": "jsonPathString(shipping_address, '$.zipcode')"
+      },
+      {
+        "columnName": "customer_id",
+        "transformFunction": "jsonPathString(customer, '$.customer_id')"
+      },
+      {
+        "columnName": "customer_name",
+        "transformFunction": "jsonPathString(customer, '$.name')"
+      },
+      {
+        "columnName": "customer_email",
+        "transformFunction": "jsonPathString(customer, '$.email')"
+      },
+      {
+        "columnName": "customer_phone",
+        "transformFunction": "jsonPathString(customer, '$.phone')"
+      },
+      {
+        "columnName": "customer_address",
+        "transformFunction": "jsonPathString(customer, '$.address')"
+      },
+      {
+        "columnName": "customer_city",
+        "transformFunction": "jsonPathString(customer, '$.city')"
+      },
+      {
+        "columnName": "customer_state",
+        "transformFunction": "jsonPathString(customer, '$.state')"
+      },
+      {
+        "columnName": "customer_zipcode",
+        "transformFunction": "jsonPathString(customer, '$.zipcode')"
+      },
+      {
+        "columnName": "status",
+        "transformFunction": "jsonPathArray(status_history, '$[*].status')"
+      },
+      {
+        "columnName": "status_id",
+        "transformFunction": "jsonPathArray(status_history, '$[*].status_id')"
+      },
+      {
+        "columnName": "status_timestamp",
+        "transformFunction": "jsonPathArray(status_history, '$[*].timestamp')"
+      },
+      {
+        "columnName": "itemNames",
+        "transformFunction": "jsonPathArray(line_items, '$[*].product.name')"
+      },
+      {
+        "columnName": "itemCategories",
+        "transformFunction": "jsonPathArray(line_items, '$[*].product.category')"
+      },
+      {
+        "columnName": "itemQtys",
+        "transformFunction": "jsonPathArray(line_items, '$[*].quantity')"
+      }
+    ]
+  },
+  "metadata": {
+    "customConfigs": {}
+  },
+  "routing": {
+    "instanceSelectorType": "strictReplicaGroup"
+  }
+}

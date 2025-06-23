@@ -1,0 +1,6 @@
+{
+  "tenantRole": "SERVER",
+  "tenantName": "realTimeServerTenant",
+  "offlineInstanceCount": 0,
+  "realtimeInstanceCount": 1
+}
