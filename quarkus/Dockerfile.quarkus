@@ -1,0 +1,46 @@
+FROM debian:bullseye-slim
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      curl \
+      procps \
+      net-tools \
+      unzip \
+      zip \
+      bash \
+      maven \
+      vim \
+      ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV SDKMAN_DIR=/usr/local/sdkman
+ENV PATH="${SDKMAN_DIR}/bin:${SDKMAN_DIR}/candidates/java/current/bin:${SDKMAN_DIR}/candidates/quarkus/current/bin:${PATH}"
+
+WORKDIR /workspace
+
+RUN curl -s "https://get.sdkman.io" | bash && \
+    bash -lc "\
+      source ${SDKMAN_DIR}/bin/sdkman-init.sh && \
+      sdk install java 17.0.8-tem && \
+      sdk install quarkus && \
+      quarkus create app blewy --package-name blewy && \
+      cd blewy && \
+      quarkus extension add 'io.quarkus:quarkus-kafka-streams' && \
+      cd .. && \
+      sdk flush archives && \
+      sdk flush tmp \
+    "
+
+COPY /quarkus/src /workspace/blewy/src
+COPY /quarkus/pom.xml /workspace/blewy/pom.xml
+
+ENV QUARKUS_KAFKA_STREAMS_ORDERS_BOOTSTRAP_SERVERS="kafka2:9092,kafka3:9093,kafka4:9094"
+ENV QUARKUS_KAFKA_STREAMS_CLICKSTREAMS_BOOTSTRAP_SERVERS="kafka2:9092,kafka3:9093,kafka4:9094"
+
+WORKDIR /workspace/blewy
+
+RUN bash -lc "quarkus build --no-tests -Dquarkus.package.type=uber-jar"
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "/workspace/blewy/target/blewy-0.0.1-runner.jar"]
