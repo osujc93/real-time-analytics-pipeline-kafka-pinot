@@ -21,8 +21,6 @@ COPY /pinot/conf/pinot-controller-log4j2.xml /opt/pinot/conf/pinot-controller-lo
 
 COPY /pinot/conf/orders/schema.json /opt/pinot/conf/orders/schema.json
 COPY /pinot/conf/orders/table2.json /opt/pinot/conf/orders/table.json
-COPY /pinot/conf/clickstreams/schema.json /opt/pinot/conf/clickstreams/schema.json
-COPY /pinot/conf/clickstreams/table.json /opt/pinot/conf/clickstreams/table.json
 
 COPY /pinot/conf/orders/server-tenant.json /opt/pinot/conf/orders/server-tenant.json
 COPY /pinot/conf/orders/broker-tenant.json /opt/pinot/conf/orders/broker-tenant.json
