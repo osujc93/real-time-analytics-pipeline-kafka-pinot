@@ -1,0 +1,16 @@
+FROM python:3.10
+
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+COPY /streamlit/requirements.txt /requirements.txt
+
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip
+
+COPY /streamlit/app.py .
+
+ENTRYPOINT ["streamlit", "run", "app.py", "--server.fileWatcherType", "none"]
+
+
