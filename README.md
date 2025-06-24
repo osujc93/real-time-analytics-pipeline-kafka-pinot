@@ -7,10 +7,10 @@ This project is a real-time analytics pipeline that uses Apache Kafka, Apache Pi
 ## Architecture
 The system consists of:
 
-- **Flask REST API**: Generates online orders continuously in JSON.
-- **Kafka**: 1 Controller & 3 brokers configured in KRaft mode. Kafka producer used to continuously fetch orders from API.
+- **Flask REST API**: Generates random online orders continuously in JSON (1000+ per minute).
+- **Kafka**: 1 Controller & 3 brokers configured in KRaft mode. Kafka producer used to continuously fetch orders from API and store in Kafka topic.
 - **Pinot**: For real-time OLAP queries on data in Kafka topic. Pinot ingests events in real-time and applies JSON decoding and transformation into columns.
-- **Quarkus**: Runs a Kafka Streams topology that reads from the topic; computing time-windowed aggregates (60s), and storing them in state stores. Also includes REST endpoints for queries against Pinot. Quarkus app then exposes these streaming aggregates & queries via HTTP endpoints. 
+- **Quarkus**: Java framework used to run a Kafka Streams topology that reads from the topic; computing time-windowed aggregates (60s), and storing them in state stores. Also includes REST endpoints for queries against Pinot. Quarkus app then exposes these streaming aggregates & queries via HTTP endpoints. 
 - **Zookeeper**: 3 Participants & 2 Observers used for Pinot's internal cluster management.
 - **Postgres**: Backend for API & Airflow.
 - **Streamlit**: Live dashboard. Calls the Quarkus HTTP endpoints and returns visualization of the metrics.
@@ -19,8 +19,7 @@ The system consists of:
 ## Setup
 
 ### Prerequisites
-- Docker & Docker Compose installed
-- 32gb of memory
+- Install Docker & Docker Compose 
 
 ### Deployment
 1. Clone repository:
@@ -36,22 +35,23 @@ The system consists of:
    $ docker-compose up -d
    ```
 
-3. 
-   ```sh
-
-   ```
+3. Onca containers are up and running, wait 10-15 for Quarkus app build, and then you can navigate to the following:
    
-## Pinot Queries & Examples of Outputs from Endpoints:
+   Airflow UI - http://localhost:8082
+
+   Kafka UI - http://localhost:8084
+
+   Pinot UI - http://localhost:9000
+
+   Streamlit Dashboard - http://localhost:8501
+  
+## Pinot Queries & REST Endpoints:
 
 http://localhost:8888/orders/overview
-
-```sh
 
 Endpoint for Kafka Streams topology that keeps rolling 1-second-advancing, 60-second windows of key business metrics.
 
 Everything is persisted in embedded RocksDB state stores so the data can be queried on demand without hitting Pinot/PostgreSQL.
-
-```
 
 ![Diagram](/images/pinot-data-1.png)
 
@@ -78,6 +78,8 @@ FROM orders;
 
 ```
 
+![Diagram](/images/pinot-data-2.png)
+
 http://localhost:8888/orders/popular
 
 ```sh
@@ -103,6 +105,8 @@ ORDER BY quantity DESC LIMIT 5;
 
 ```
 
+![Diagram](/images/pinot-data-3.png)
+
 http://localhost:8888/orders/ordersperminute
 
 ```sh
@@ -123,6 +127,8 @@ LIMIT 60;
 
 ```
 
+![Diagram](/images/pinot-data-4.png)
+
 http://localhost:8888/orders/latestorders
 
 ```sh
@@ -142,8 +148,10 @@ DESC LIMIT 10;
 
 ```
 
+![Diagram](/images/pinot-data-5.png)
 
-## Streamlit
+
+## Streamlit Sashboard
 
 http://localhost:8501
 
