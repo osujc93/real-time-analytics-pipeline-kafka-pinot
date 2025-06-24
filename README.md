@@ -10,7 +10,7 @@ The system consists of:
 - **Flask REST API**: Generates random online orders continuously in JSON (1000+ per minute).
 - **Kafka**: 1 Controller & 3 brokers configured in KRaft mode. Kafka producer used to continuously fetch orders from API and store in Kafka topic.
 - **Pinot**: For real-time OLAP queries on data in Kafka topic. Pinot ingests events in real-time and applies JSON decoding and transformation into columns.
-- **Quarkus**: Java framework used to run a Kafka Streams topology that reads from the topic; computing time-windowed aggregates (60s), and storing them in state stores. Also includes REST endpoints for queries against Pinot. Quarkus app then exposes these streaming aggregates & queries via HTTP endpoints. 
+- **Quarkus**: Java framework used to run a Kafka Streams topology that reads from the topic; computing time-windowed aggregates (60s), and storing them in state stores. Also includes REST endpoints for queries against Pinot. Quarkus app exposes these streaming aggregates & queries via HTTP endpoints. 
 - **Zookeeper**: 3 Participants & 2 Observers used for Pinot's internal cluster management.
 - **Postgres**: Backend for API & Airflow.
 - **Streamlit**: Live dashboard. Calls the Quarkus HTTP endpoints and returns visualization of the metrics.
@@ -24,7 +24,7 @@ The system consists of:
 ### Deployment
 1. Clone repository:
    ```sh
-   $ git clone <repository-url>
+   $ git clone https://github.com/osujc93/real-time-analytics-pipeline-kafka-pinot
    $ cd real-time-analytics-pipeline-kafka-pinot
    ```
 
@@ -59,7 +59,7 @@ http://localhost:8888/orders/overview2
 
 ```sh
 
--- Rreturns the number of distinct orders, sum of order_total, and separate
+-- Returns the number of distinct orders, sum of order_total, and separate
 -- counts of orders that were refunded, delivered, or flagged as fraud
 -- for the most recent 60 seconds and for the previous 60 seconds.
 
@@ -77,8 +77,6 @@ SELECT
 FROM orders;
 
 ```
-
-![Diagram](/images/pinot-data-2.png)
 
 http://localhost:8888/orders/popular
 
@@ -105,13 +103,15 @@ ORDER BY quantity DESC LIMIT 5;
 
 ```
 
-![Diagram](/images/pinot-data-3.png)
-
 http://localhost:8888/orders/ordersperminute
 
 ```sh
 
---
+-- Returns the orders from the past hour, groups them into
+-- one-minute intervals and for each interval returns the
+-- distinct order count, sum of order_total, and distinct
+-- counts of fraud, delivered, and refunded orders.
+
 
 SELECT ToDateTime(DATETRUNC('MINUTE',time_ms,'MILLISECONDS'),'yyyy-MM-dd HH:mm:ss','America/New_York') AS dateMin, 
 COUNT(DISTINCT order_id)                                        AS orders, 
@@ -127,13 +127,13 @@ LIMIT 60;
 
 ```
 
-![Diagram](/images/pinot-data-4.png)
-
 http://localhost:8888/orders/latestorders
 
 ```sh
 
---
+-- Returns the 10 most recent orders with their timestamp,
+-- the order’s total, the customer’s ID, the number of
+-- distinct products in the order, and the total quantity of items.
 
 SELECT order_id, 
 ToDateTime(MAX(time_ms),'yyyy-MM-dd HH:mm:ss','America/New_York') AS time_ny, 
@@ -148,10 +148,7 @@ DESC LIMIT 10;
 
 ```
 
-![Diagram](/images/pinot-data-5.png)
-
-
-## Streamlit Sashboard
+## Streamlit Dashboard
 
 http://localhost:8501
 
