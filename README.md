@@ -5,7 +5,7 @@
 This project is a real-time analytics pipeline that uses Apache Kafka, Apache Pinot, Quarkus and Streamlit. Order events are captured in Kafka topic, transformed and indexed in Pinot realtime table, rolling metrics computed via Kafka Streams in Quarkus, and Streamlit provides visualizations of these metrics.
 
 ## Architecture
-The system consists of:
+This project consists of:
 
 - **Flask REST API**: Generates random online orders continuously in JSON (1000+ per minute).
 - **Kafka**: 1 Controller & 3 brokers configured in KRaft mode. Kafka producer used to continuously fetch orders from API and store in Kafka topic.
@@ -18,10 +18,6 @@ The system consists of:
 
 ## Setup
 
-### Prerequisites
-- Install Docker & Docker Compose 
-
-### Deployment
 1. Clone repository:
    ```sh
    $ git clone https://github.com/osujc93/real-time-analytics-pipeline-kafka-pinot
@@ -29,6 +25,9 @@ The system consists of:
    ```
 
 2. Build and start services:
+   
+   Ensure you have Docker & Docker Composeinstalled on your machine.
+   
    ```sh
    $ docker-compose build
 
