@@ -1,5 +1,7 @@
 # **Real-Time Analytics Pipeline**
 
+![Diagram](/images/diagram.png)
+
 ## Overview
 
 This project is a real-time analytics pipeline that uses Apache Kafka, Apache Pinot, Quarkus and Streamlit. Order events are captured in Kafka topic, transformed and indexed in Pinot realtime table, rolling metrics computed via Kafka Streams in Quarkus, and Streamlit provides visualizations of these metrics.
