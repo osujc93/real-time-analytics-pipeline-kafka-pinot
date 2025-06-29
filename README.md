@@ -36,9 +36,13 @@ This project consists of:
    $ docker-compose up -d
    ```
 
-3. Onca containers are up and running, wait 10-15 for Quarkus app build, and then you can navigate to the following:
+3. Onca containers are up and running, wait 15 mins for Quarkus app build, and then you can navigate to the following:
    
    Airflow UI - http://localhost:8082
+
+    - Username: <code>airflow</code>
+   
+    - Password: <code>airflow</code>
 
    Kafka UI - http://localhost:8084
 
