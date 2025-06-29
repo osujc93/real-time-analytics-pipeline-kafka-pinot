@@ -13,7 +13,7 @@ This project consists of:
 - **Kafka**: 1 Controller & 3 brokers configured in KRaft mode. Kafka producer used to continuously fetch orders from API and store in Kafka topic.
 - **Pinot**: For real-time OLAP queries on data in Kafka topic. Pinot ingests events in real-time and applies JSON decoding and transformation into columns.
 - **Quarkus**: Java framework used to run a Kafka Streams topology that reads from the topic; computing time-windowed aggregates (60s), and storing them in state stores. Also includes REST endpoints for queries against Pinot. Quarkus app exposes these streaming aggregates & queries via HTTP endpoints. 
-- **Zookeeper**: 3 Participants & 2 Observers used for Pinot's internal cluster management.
+- **Zookeeper**: 3 Participants & 2 Observers providing distributed coordination for Pinot's internal cluster management.
 - **Postgres**: Backend for API & Airflow.
 - **Streamlit**: Live dashboard. Calls the Quarkus HTTP endpoints and returns visualization of the metrics.
 - **Airflow**: Automates entire workflow. DAG executes once all containers are up and running.
@@ -152,6 +152,26 @@ ORDER BY time_ny
 DESC LIMIT 10;
 
 ```
+
+http://localhost:8888/orders/couponslastminute
+
+```sh
+
+SELECT coupon_codes.name,
+COUNT(DISTINCT order_id) AS orders
+FROM orders
+WHERE coupon_codes.name IS NOT NULL AND time_ms > ago('PT1M')
+GROUP BY coupon_codes.name
+ORDER BY orders DESC;
+
+```
+
+http://localhost:8888/orders/toplocations
+
+```sh
+
+```
+
 
 ## Streamlit Dashboard
 
