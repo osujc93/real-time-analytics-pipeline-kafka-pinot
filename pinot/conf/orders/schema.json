@@ -16,10 +16,13 @@
     { "name": "expected_delivery_date", "dataType": "STRING" },
     { "name": "fulfillment_center", "dataType": "STRING" },
     {
-      "name": "coupon_codes",
+      "name": "coupon_codes.name",
       "dataType": "STRING",
+      "fieldType": "DIMENSION",
       "singleValueField": false
     },
+    { "name": "coupon_codes", "dataType": "JSON" },
+    { "name": "coupon", "dataType": "STRING", "singleValueField": false },
     { "name": "status_history", "dataType": "JSON" },
     {
       "name": "status",
@@ -79,7 +82,6 @@
       "dataType": "INT",
       "singleValueField": false
     },
-
     {
       "name": "line_items.free_qty",
       "dataType": "INT",
@@ -110,8 +112,6 @@
       "fieldType": "DIMENSION",
       "singleValueField": false
     },
-
-
     {
       "name": "line_items.product.price",
       "dataType": "DOUBLE",
@@ -124,7 +124,6 @@
       "fieldType": "DIMENSION",
       "singleValueField": false
     }
-
   ],
   "metricFieldSpecs": [
     { "name": "order_total", "dataType": "DOUBLE" },
