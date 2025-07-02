@@ -59,15 +59,12 @@ x-extra-hosts: &shared-hosts
   - "zookeeper5:172.20.10.75"
   - "fake-ecommerce-api:172.20.10.66"
   - "nginx:172.20.10.70"
-  - "quarkus:172.20.10.99"
   - "pinot-controller:172.20.10.110"
   - "pinot-broker:172.20.10.111"
   - "pinot-server:172.20.10.112"
   - "pinot-server2:172.20.10.114"
   - "pinot-server3:172.20.10.115"
   - "pinot-minion:172.20.10.113"
-  - "streamlit:172.20.10.120"
-  - "debezium:172.20.10.6"
 
 services:
   redis:
