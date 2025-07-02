@@ -5,7 +5,7 @@
     "timeColumnName": "time_ms",
     "timeType": "MILLISECONDS",
     "retentionTimeUnit": "DAYS",
-    "retentionTimeValue": "1",
+    "retentionTimeValue": "30",
     "schemaName": "orders",
     "replicasPerPartition": "3"
   },
@@ -28,7 +28,7 @@
   "ingestionConfig": {
     "complexTypeConfig": {
       "delimiter": ".",
-      "fieldsToUnnest": ["line_items"]
+      "fieldsToUnnest": ["line_items", "coupon_codes"]
     },
     "transformConfigs": [
       {
@@ -126,6 +126,10 @@
       {
         "columnName": "itemQtys",
         "transformFunction": "jsonPathArray(line_items, '$[*].quantity')"
+      },
+      {
+        "columnName": "coupon",
+        "transformFunction": "jsonPathArray(coupon_codes, '$[*].name')"
       }
     ]
   },
