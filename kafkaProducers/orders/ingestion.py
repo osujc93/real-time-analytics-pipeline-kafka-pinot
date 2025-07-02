@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-"""
-ingestion.py – Pulls pages from the fake API and publishes to Kafka.
-"""
 
 from __future__ import annotations
 
@@ -23,7 +20,6 @@ NY_TZ = pytz.timezone("America/New_York")
 
 
 class OrderIngestion:
-    """High‑level orchestrator that streams orders into Kafka."""
 
     def __init__(self, topic: str = "FakeEcommOrders") -> None:
         self.topic = topic
@@ -32,12 +28,10 @@ class OrderIngestion:
 
     @staticmethod
     def _now_str() -> str:
-        """Current NY timestamp with millisecond precision."""
         return datetime.now(NY_TZ).strftime("%Y-%m-%dT%H:%M:%S.%f")
 
     @staticmethod
     def _now_ms() -> int:
-        """Unix epoch milliseconds (UTC)."""
         return int(datetime.now(timezone.utc).timestamp() * 1000)
     
     @staticmethod
@@ -51,18 +45,15 @@ class OrderIngestion:
             logger.error("Fetch/validation error for page %d: %s", page, err)
             return None
 
-    # --------------------------------------------------------------------- #
-    # Main loop
-    # --------------------------------------------------------------------- #
+
     def run_forever(self) -> None:
-        """Continuously pull pages and publish records."""
         page = 1
         session = requests.Session()
 
         try:
             while True:
                 api_page = self._fetch_page(page, session)
-                if api_page is None:  # back‑off then retry same page
+                if api_page is None: 
                     time.sleep(5)
                     continue
 
@@ -76,17 +67,13 @@ class OrderIngestion:
                     self.topic,
                 )
 
-                # round‑robin pagination
                 page = 1 if page >= api_page.total_pages else page + 1
         except KeyboardInterrupt:
-            logger.info("Interrupted – shutting down.")
+            logger.info("Interrupted, shutting down.")
         finally:
             finalize_ingestion_metadata()
             self.producer.close()
 
-    # --------------------------------------------------------------------- #
-    # Internal publishing
-    # --------------------------------------------------------------------- #
     def _publish(self, order: EcommOrder) -> None:
         msg = order.model_dump()
         msg["timestamp"] = self._now_str()  
@@ -100,5 +87,4 @@ class OrderIngestion:
         except Exception as exc:
             logger.error("Unexpected error (order %s): %s", order.order_id, exc)
         else:
-            # fire‑and‑forget for low latency; flush periodically
             self.producer.flush()

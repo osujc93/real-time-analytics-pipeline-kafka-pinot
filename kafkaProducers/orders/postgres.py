@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-postgres.py – Thin wrapper around psycopg2 for ingestion book‑keeping.
-"""
+
 from __future__ import annotations
 
 import psycopg2
@@ -11,7 +9,6 @@ from configs import logger
 
 
 class PostgresClient:
-    """Simple context‑managed connection for executing SQL statements."""
 
     def __init__(
         self,
@@ -31,7 +28,6 @@ class PostgresClient:
 
 
 def finalize_ingestion_metadata() -> None:
-    """Append a timestamp row marking completion of a data batch."""
     sql_setup = """
         CREATE TABLE IF NOT EXISTS ecommerce_ingestion_metadata (
             id SERIAL PRIMARY KEY,

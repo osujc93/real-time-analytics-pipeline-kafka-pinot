@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
-"""
-models.py – Pydantic domain objects for the Fake‑Ecommerce pipeline.
-Each model inherits from :class:`NonEmptyModel`, which rejects
-instances that are missing *required* data.
-"""
+
 from __future__ import annotations
 
 from typing import List, Optional, Union
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator  
 
 class BillingAddress(BaseModel):
     city: str
@@ -43,6 +39,10 @@ class LineItem(BaseModel):
     free_qty: int
     product: LineItemProduct
     quantity: int
+
+
+class CouponCodes(BaseModel):
+    name: str    
 
 
 class ShipmentItemProduct(BaseModel):
@@ -81,7 +81,7 @@ class Customer(BaseModel):
 
 class EcommOrder(BaseModel):
     billing_address: BillingAddress
-    coupon_codes: List[str]
+    coupon_codes: List[CouponCodes]
     currency: str
     customer: Customer
     delivered: str
@@ -118,8 +118,7 @@ class EcommOrder(BaseModel):
     tax_rate: float
     timestamp: str
     tracking_number: Optional[str]
-
-
+    
 class OrdersApiResponse(BaseModel):
     data: List[EcommOrder]
     page: int
@@ -127,11 +126,6 @@ class OrdersApiResponse(BaseModel):
 
     @model_validator(mode='after')
     def skip_no_data(cls, instance: "OrdersApiResponse") -> "OrdersApiResponse":
-        """
-        post-init validator that checks:
-          each `data[].line_items` is not empty
-        Raise a ValueError if any criteria is violated.
-        """
 
         # Ensure each EcommOrder has a non-empty line_items list
         for idx, rs in enumerate(instance.data):

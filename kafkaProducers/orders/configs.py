@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-config.py – Centralised configuration helpers.
-Sets up logging and Kafka producer/admin parameters.
-"""
+
 from __future__ import annotations
 
 import json
@@ -14,7 +11,6 @@ from kafka.admin import NewTopic
 from kafka.errors import TopicAlreadyExistsError
 
 def get_logger(name: str = "orders_producer") -> logging.Logger:
-    """Return a module‑level logger configured for DEBUG verbosity."""
     logging.basicConfig(
         level=logging.DEBUG,
         format="%(asctime)s - %(levelname)s - %(message)s",
@@ -46,18 +42,15 @@ _PRODUCER_CONFIG: Dict[str, Union[str, int]] = {
 }
 
 class KafkaConfig:
-    """Factory helpers for Kafka‑related objects."""
 
     @staticmethod
     def producer() -> KafkaProducer:
-        """Return a fully‑configured :class:`KafkaProducer`."""
         return KafkaProducer(**_PRODUCER_CONFIG)
 
     @staticmethod
     def create_topic(
         topic_name: str, num_partitions: int = 24, replication_factor: int = 3
     ) -> None:
-        """Idempotently create a topic if it does not yet exist."""
         admin = KafkaAdminClient(
             bootstrap_servers=BOOTSTRAP_SERVERS, client_id="FakeEcommOrders"
         )
@@ -77,6 +70,6 @@ class KafkaConfig:
                     replication_factor,
                 )
         except TopicAlreadyExistsError:
-            logger.debug("Topic '%s' already exists – OK", topic_name)
+            logger.debug("Topic '%s' already exists", topic_name)
         finally:
             admin.close()
