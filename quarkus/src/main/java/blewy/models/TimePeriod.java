@@ -6,20 +6,20 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
 public class TimePeriod {
 
     private long   orders;
-    private double totalPrice;
+    private double totalRevenue;
     private double avgOrderValue;
     private long   fraudCount;
     private long   deliveredCount;
     private long   refundedCount;
 
     public TimePeriod(long orders,
-                      double totalPrice,
+                      double totalRevenue,
                       double avgOrderValue,
                       long fraudCount,
                       long deliveredCount,
                       long refundedCount) {
         this.orders         = orders;
-        this.totalPrice     = totalPrice;
+        this.totalRevenue     = totalRevenue;
         this.avgOrderValue  = avgOrderValue;
         this.fraudCount     = fraudCount;
         this.deliveredCount = deliveredCount;
@@ -28,17 +28,17 @@ public class TimePeriod {
 
     public TimePeriod() {}
 
-    public TimePeriod(long orders, double totalPrice) {
+    public TimePeriod(long orders, double totalRevenue) {
         this.orders        = orders;
-        this.totalPrice    = totalPrice;
-        this.avgOrderValue = orders > 0 ? totalPrice / orders : 0.0;
+        this.totalRevenue    = totalRevenue;
+        this.avgOrderValue = orders > 0 ? totalRevenue / orders : 0.0;
     }
 
 
     public void addOrder(CompleteOrder order) {
         orders++;
-        totalPrice    += order.order_total;
-        avgOrderValue  = orders > 0 ? totalPrice / orders : 0.0;
+        totalRevenue    += order.order_total;
+        avgOrderValue  = orders > 0 ? totalRevenue / orders : 0.0;
 
         if ("true".equalsIgnoreCase(order.fraud_flag))  fraudCount++;
         if ("yes".equalsIgnoreCase(order.delivered))    deliveredCount++;
@@ -47,7 +47,7 @@ public class TimePeriod {
 
 
     public long   getOrders()         { return orders;        }
-    public double getTotalPrice()     { return totalPrice;    }
+    public double getTotalRevenue()     { return totalRevenue;    }
     public double getAvgOrderValue()  { return avgOrderValue; }
     public long   getFraudCount()     { return fraudCount;    }
     public long   getDeliveredCount() { return deliveredCount;}

@@ -2,13 +2,11 @@ package blewy.models;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import com.fasterxml.jackson.databind.JsonNode;
-
 import java.util.List;
 
 @RegisterForReflection
 public class Order {
 
-    // Dimension-like fields
     public String order_id;
     public String currency;
     public String payment_method;
@@ -23,30 +21,23 @@ public class Order {
     public String expected_delivery_date;
     public String fulfillment_center;
 
-    // Multi-value dimension
-    public List<String> coupon_codes;
+    public List<CouponCode> coupon_codes;
 
-    // JSON fields
-    public JsonNode status_history;      
-    public JsonNode billing_address;     
-    public JsonNode shipping_address;    
-    public JsonNode shipments;          
+    public JsonNode status_history;
+    public JsonNode billing_address;
+    public JsonNode shipping_address;
+    public JsonNode shipments;
 
-    // Nested typed object for convenience
     public Customer customer;
-
-    // line_items array
     public List<OrderItem> line_items;
-
     public String pet_name;
     public String subscription_id;
     public String subscription_frequency;
     public String payment_info;
     public String fraud_flag;
 
-    // Metric fields
     public double order_total;
-    public int risk_score;
+    public int    risk_score;
     public double exchange_rate;
     public double env_fee;
     public double shipping_cost;
@@ -55,16 +46,21 @@ public class Order {
     public double subtotal_before_promos;
     public double tax_amount;
     public double tax_rate;
-    public int loyalty_points_used;
-    public int productsOrdered;
-    public int totalQuantity;
+    public int    loyalty_points_used;
+    public int    productsOrdered;
+    public int    totalQuantity;
 
     public String timestamp;
-    public long time_ms;
+    public long   time_ms;
 
     public String tracking_number;
 
-    public Order() {
+    public Order() { }
+
+    @RegisterForReflection
+    public static class CouponCode {
+        public String name;
+        public CouponCode() { }
     }
 
     @RegisterForReflection
@@ -77,8 +73,6 @@ public class Order {
         public String phone;
         public String state;
         public String zipcode;
-
-        public Customer() {
-        }
+        public Customer() { }
     }
 }
