@@ -59,12 +59,15 @@ x-extra-hosts: &shared-hosts
   - "zookeeper5:172.20.10.75"
   - "fake-ecommerce-api:172.20.10.66"
   - "nginx:172.20.10.70"
+  - "quarkus:172.20.10.99"
   - "pinot-controller:172.20.10.110"
   - "pinot-broker:172.20.10.111"
   - "pinot-server:172.20.10.112"
   - "pinot-server2:172.20.10.114"
   - "pinot-server3:172.20.10.115"
   - "pinot-minion:172.20.10.113"
+  - "streamlit:172.20.10.120"
+  - "debezium:172.20.10.6"
 
 services:
   redis:
@@ -773,14 +776,14 @@ services:
     image: fake-ecommerce-api:latest
     environment:
       FAKE_RECORD_COUNT: 1111
-      NEW_BATCH_SIZE: 555
+      NEW_BATCH_SIZE: 777
       NEW_BATCH_INTERVAL_SECONDS: 25
       PYTHONUNBUFFERED: 1
       POSTGRES_HOST: postgres
       POSTGRES_DB: blewy
       POSTGRES_USER: blewy
       POSTGRES_PASSWORD: Password123456789
-      SQLALCHEMY_DATABASE_URI: postgresql+psycopg2://blewy:Password123456789@postgres:5432/blewy
+      SQLALCHEMY_DATABASE_URI: postgresql+psycopg://blewy:Password123456789@postgres:5432/blewy
       SQLALCHEMY_POOL_SIZE: 10
       SQLALCHEMY_POOL_TIMEOUT: 30
     ports:
@@ -814,7 +817,7 @@ services:
       POSTGRES_DB: blewy
       POSTGRES_USER: blewy
       POSTGRES_PASSWORD: Password123456789
-      SQLALCHEMY_DATABASE_URI: postgresql+psycopg2://blewy:Password123456789@postgres:5432/blewy
+      SQLALCHEMY_DATABASE_URI: postgresql+psycopg://blewy:Password123456789@postgres:5432/blewy
     depends_on:
       postgres:
         condition: service_healthy  
@@ -929,7 +932,7 @@ services:
         -serverPort 8097
         -serverAdminPort 8096
     environment:
-      JAVA_OPTS: "-Xms2g -Xmx2g"
+      JAVA_OPTS: "-Xms3g -Xmx3g"
     networks:
       nelo-data-pipeline:
         ipv4_address: 172.20.10.112
@@ -965,7 +968,7 @@ services:
         -serverPort 8097
         -serverAdminPort 8096
     environment:
-      JAVA_OPTS: "-Xms2g -Xmx2g"
+      JAVA_OPTS: "-Xms3g -Xmx3g"
     networks:
       nelo-data-pipeline:
         ipv4_address: 172.20.10.114
@@ -990,7 +993,7 @@ services:
         -serverPort 8097
         -serverAdminPort 8096
     environment:
-      JAVA_OPTS: "-Xms2g -Xmx2g"
+      JAVA_OPTS: "-Xms3g -Xmx3g"
     networks:
       nelo-data-pipeline:
         ipv4_address: 172.20.10.115
