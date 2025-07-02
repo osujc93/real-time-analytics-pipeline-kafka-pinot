@@ -31,25 +31,28 @@ public class UsersResource {
     );
 
     @GET
-    @Path("/{userId}/orders")
-    public Response userOrders(@PathParam("userId") String userId) {
+    @Path("/{customerId}/orders")
+    public Response userOrders(@PathParam("customerId") String customerId) {
 
         String query = DSL.using(SQLDialect.POSTGRES)
                 .select(
                     field("order_id"),
+
                     field("order_total"),
-                    field("ToDateTime(MAX(time_ms), 'yyyy-MM-dd HH:mm:ss', 'America/New_York')").as("time_ny")
+
+                    field("ToDateTime(MAX(time_ms), 'yyyy-MM-dd HH:mm:ss', 'America/New_York')")
+                            .as("time_ny")
                 )
                 .from("orders")
-                .where(field("customer_id").eq(field("'" + userId + "'")))
+                .where(field("customer_id").eq(field("'" + customerId + "'")))
                 .groupBy(field("order_id"))
                 .orderBy(field("time_ny").desc())
                 .limit(DSL.inline(50))
                 .getSQL();
 
         ResultSet resultSet = runQuery(connection, query);
-
         List<Map<String, Object>> rows = new ArrayList<>();
+
         for (int index = 0; index < resultSet.getRowCount(); index++) {
             rows.add(Map.of(
                     "order_id", resultSet.getString(index, 0),
@@ -68,7 +71,9 @@ public class UsersResource {
         String query = DSL.using(SQLDialect.POSTGRES)
                 .select(
                         field("customer_id"),
-                        field("ToDateTime(MAX(time_ms), 'yyyy-MM-dd HH:mm:ss', 'America/New_York')").as("time_ny")
+
+                        field("ToDateTime(MAX(time_ms), 'yyyy-MM-dd HH:mm:ss', 'America/New_York')")
+                                .as("time_ny")
                 )
                 .from("orders")
                 .groupBy(field("customer_id"))

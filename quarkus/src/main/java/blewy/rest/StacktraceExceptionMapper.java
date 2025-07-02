@@ -14,14 +14,9 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Global catch-all mapper that exposes the real exception message and stack trace
- * in every response (HTTP 500).  Very useful for debugging; **do not** enable in
- * production unless you are comfortable leaking internals.
- */
 @Provider
 @ApplicationScoped
-@Priority(Priorities.USER)          // outranks Quarkus’ default mappers
+@Priority(Priorities.USER)
 public class StacktraceExceptionMapper implements ExceptionMapper<Throwable> {
 
     private static final Logger LOG = Logger.getLogger(StacktraceExceptionMapper.class);
