@@ -14,35 +14,19 @@ generator = FakeEcommerceDataGenerator()
 
 @celery_app.task
 def generate_orders_task(count):
-    """
-    Generates orders and returns them as a list of dicts.
-    We return dict because Celery needs serializable results.
-    
-    NOTE: This task generates its own random customers for each order,
-    so orders from this task do NOT necessarily share customers with clickstream.
-    """
+
     orders = generator.generate_multiple_orders(count)
     return [o.to_dict() for o in orders]
 
 @celery_app.task
 def generate_clickstream_task(count):
-    """
-    Generates clickstream events and returns them as a list of dicts.
-    Each event is random/fake, similar in spirit to the orders data generation.
-    
-    NOTE: This task generates its own random customers for each clickstream event,
-    so events from this task do NOT necessarily share customers with orders.
-    """
+
     events = generator.generate_multiple_clickstream_events(count)
     return events
 
 @celery_app.task
 def generate_combined_data_task(count):
-    """
-    NEW TASK:
-    Dynamically generate BOTH orders and clickstream events for the SAME customers.
-    Returns a dict containing a list of orders and a list of clickstream events.
-    """
+
     orders_list = []
     events_list = []
 
