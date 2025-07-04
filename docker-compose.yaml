@@ -867,9 +867,9 @@ services:
         condition: service_healthy 
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:9000/health"]
-      interval: 45s
+      interval: 60s
       timeout: 30s
-      retries: 6
+      retries: 10
       start_period: 45s
     extra_hosts: *shared-hosts
 
