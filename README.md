@@ -31,12 +31,12 @@ This project consists of:
    Ensure you have Docker & Docker Composeinstalled on your machine.
    
    ```sh
-   $ docker-compose build
+   $ docker-compose build airflow-base
 
    $ docker-compose up -d
    ```
 
-3. Onca containers are up and running, wait 15 mins for Quarkus app build, and then you can navigate to the following:
+3. Onca containers are up and running, wait 5-10 mins for Quarkus app build, and then navigate to the following:
    
    Airflow UI - http://localhost:8082
 
