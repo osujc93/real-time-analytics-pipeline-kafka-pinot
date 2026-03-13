@@ -10,7 +10,8 @@ This project is a real-time analytics pipeline that uses Apache Kafka, Apache Pi
 This project consists of:
 
 - **Flask REST API**: Generates random online orders continuously in JSON (1000+ per minute).
-- **Kafka**: 1 Controller & 3 brokers configured in KRaft mode. Kafka producer used to continuously fetch orders from API and store in Kafka topic.
+- **Debezium**: Captures row-level change events from Postgres using Change Data Capture (CDC) and streams those changes into Kafka topic in near real time.
+- **Kafka**: 1 Controller & 3 brokers configured in KRaft mode. Stores CDC events Debezium and makes them available to downstream consumers.
 - **Pinot**: For real-time OLAP queries on data in Kafka topic. Pinot ingests events in real-time and applies JSON decoding and transformation into columns.
 - **Quarkus**: Java framework used to run a Kafka Streams topology that reads from the topic; computing time-windowed aggregates (60s), and storing them in state stores. Also includes REST endpoints for queries against Pinot. Quarkus app exposes these streaming aggregates & queries via HTTP endpoints. 
 - **Zookeeper**: 3 Participants & 2 Observers providing distributed coordination for Pinot's internal cluster management.
