@@ -1,6 +1,6 @@
 # **Real-Time Analytics Pipeline**
 
-![Diagram](/images/diagram.png)
+![Diagram](/images/diagram1.png)
 
 ## Overview
 
